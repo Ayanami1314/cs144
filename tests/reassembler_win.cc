@@ -2,7 +2,6 @@
 #include "reassembler_test_harness.hh"
 
 #include <algorithm>
-#include <cstdint>
 #include <exception>
 #include <iostream>
 #include <tuple>

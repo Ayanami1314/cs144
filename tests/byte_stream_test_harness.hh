@@ -2,6 +2,7 @@
 
 #include "byte_stream.hh"
 #include "common.hh"
+#include "conversions.hh"
 
 #include <concepts>
 #include <optional>
@@ -183,8 +184,17 @@ struct ReadAll : public Expectation<ByteStream>
     std::string got;
     read( bs.reader(), output_.size(), got );
     if ( got != output_ ) {
-      throw ExpectationViolation { "Expected to read \"" + Printer::prettify( output_ ) + "\", but found \""
-                                   + Printer::prettify( got ) + "\"" };
+      std::string index_msg;
+      for ( size_t i = 0; i < got.size(); i++ ) {
+        if ( got[i] != output_[i] ) {
+          index_msg
+            = "Mismatch at index " + to_string( i ) + ": " + to_string( got[i] ) + " != " + to_string( output_[i] );
+        }
+      }
+      throw ExpectationViolation { index_msg + "\n" + "Expected to read \"" + Printer::prettify( output_ )
+                                   + "\", but found \"" + Printer::prettify( got ) + "\""
+                                   + "Output_ len: " + to_string( output_.size() ) + " , "
+                                   + "Got len: " + to_string( output_.size() ) };
     }
     empty_.execute( bs );
   }
