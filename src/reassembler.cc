@@ -17,7 +17,9 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   // NOTE: "That is, you can assume that there is a unique underlying byte-stream, and all
   // NOTE: substrings are (accurate) slices of it" ----  package may be lost but not corrupted
   // NOTE: buffer: start marker next_index, len is available_capacity
-  // std::cout << data << std::endl;
+  std::cout << "first_index: " << first_index << " data: " << data << " is_last_substring: " << is_last_substring
+            << std::endl;
+
   if ( output_.writer().available_capacity() > buffer.size() ) {
     // buffer = string( output_.writer().available_capacity() - buffer.size(), 'x' ) + buffer;
     buffer.resize( output_.writer().available_capacity() );
@@ -37,11 +39,16 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
   if ( first_index < next_index ) {
     assert( first_index + data.size() > next_index );
     data = data.substr( next_index - first_index, output_.writer().available_capacity() );
-    write_in_space( data, is_last_substring );
+    // add
+    if ( !data.empty() ) {
+      // has some space to contain data
+      write_in_space( data, is_last_substring );
+    }
     return;
   }
   // gap, exceed capacity
   if ( first_index >= next_index + buffer.size() ) {
+    cout << "gap: drop package" << endl;
     return;
   }
   // gap, (partially) in capacity, store in buffer

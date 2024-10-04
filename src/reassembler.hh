@@ -164,6 +164,8 @@ public:
     void setSize( uint64_t s ) { this->size = s; }
     void setLast( bool l ) { this->is_last_substring = l; }
   };
+  uint64_t get_next_index() const { return next_index; }
+  // auto get_remain_capacity() const { return buffer.size(); };
 
 private:
   ByteStream output_;      // the Reassembler writes to this ByteStream
