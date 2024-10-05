@@ -1,14 +1,17 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include "retransmit_timer.hh"
 #include "tcp_receiver_message.hh"
 #include "tcp_sender_message.hh"
+#include "wrapping_integers.hh"
 
 #include <cstdint>
 #include <functional>
 #include <list>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <queue>
 
 class TCPSender
@@ -16,7 +19,14 @@ class TCPSender
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( ByteStream&& input, Wrap32 isn, uint64_t initial_RTO_ms )
-    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms )
+    : input_( std::move( input ) )
+    , isn_( isn )
+    , outstanding_segs()
+    , received_max_ackno( 0 )
+    , next_send_segno( 0 )
+    , cur_window_size( 1 )
+    , timer( initial_RTO_ms )
+    , finish_send( false )
   {}
 
   /* Generate an empty TCPSenderMessage */
@@ -47,5 +57,17 @@ private:
   // Variables initialized in constructor
   ByteStream input_;
   Wrap32 isn_;
-  uint64_t initial_RTO_ms_;
+  struct outstanding_pair
+  {
+    uint64_t abs_seq;
+    TCPSenderMessage msg;
+    // priority less, abs_seq greater
+    bool operator<( const outstanding_pair& rhs ) const { return abs_seq > rhs.abs_seq; }
+  };
+  std::priority_queue<outstanding_pair> outstanding_segs;
+  uint64_t received_max_ackno;
+  uint64_t next_send_segno;
+  uint64_t cur_window_size;
+  RetransmitTimer timer;
+  bool finish_send;
 };
