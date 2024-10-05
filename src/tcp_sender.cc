@@ -26,14 +26,14 @@ void TCPSender::push( const TransmitFunction& transmit )
 
   uint64_t has_pushed = 0;
   bool finished = false;
-  std::cout << "--- Push Start" << std::endl;
+  std::cerr << "--- Push Start" << std::endl;
   if ( finish_send ) {
     return;
   }
 
   if ( input_.reader().is_finished() && !finish_send && sequence_numbers_in_flight() < cur_window_size ) {
     // HINT: extra fin not send
-    cout << "extra fin" << endl;
+    cerr << "extra fin" << endl;
     auto msg = make_empty_message();
     msg.FIN = true;
     if ( next_send_segno == 0 ) {
@@ -76,8 +76,9 @@ void TCPSender::push( const TransmitFunction& transmit )
         read( input_.reader(), input_.reader().bytes_buffered(), msg.payload );
         msg.FIN = input_.reader().is_finished();
       } else {
-        // HINT: for == case, FIN can't be send during this push, the test points at it should be
-        // push in next push if window has enough space (instead of placing it in outstanding segments)
+        // HINT:for == case, FIN can't be send during this push. The **test points** that it should be pushed in
+        // next call of push() if window has enough space (instead of placing it in outstanding segments or other
+        // solutions)
         read( input_.reader(), pkg_sz, msg.payload );
       }
     }
@@ -98,12 +99,12 @@ void TCPSender::push( const TransmitFunction& transmit )
     // update next_send
     next_send_segno += msg.sequence_length();
 
-    std::cout << "Send: " << msg << std::endl;
+    std::cerr << "Send: " << msg << std::endl;
     // send msg
     transmit( msg );
     has_pushed += msg.sequence_length();
   }
-  std::cout << "--- Push End" << std::endl;
+  std::cerr << "--- Push End" << std::endl;
 }
 
 TCPSenderMessage TCPSender::make_empty_message() const
@@ -133,7 +134,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
       // fully received, remove it
       while ( !outstanding_segs.empty()
               && outstanding_segs.top().abs_seq + outstanding_segs.top().msg.sequence_length() <= abs_seq ) {
-        std::cout << "Receive: " << outstanding_segs.top().msg << std::endl;
+        std::cerr << "Receive: " << outstanding_segs.top().msg << std::endl;
         outstanding_segs.pop();
       }
       received_max_ackno = abs_seq;
@@ -142,7 +143,7 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
     }
   }
   // HINT: not validate the window size change
-  cout << "change window size to: " << msg.window_size << endl;
+  cerr << "change window size to: " << msg.window_size << endl;
   cur_window_size = msg.window_size;
 }
 
@@ -153,20 +154,20 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
   (void)transmit;
   bool expired = timer.update( ms_since_last_tick );
   if ( !expired ) {
-    cout << "Not expired" << endl;
+    // cerr << "Not expired" << endl;
     return;
   }
   // retransmit earliest seg
   if ( !outstanding_segs.empty() ) {
     auto [_, msg] = outstanding_segs.top();
     transmit( msg );
-    std::cout << "Retransmit: " << msg << std::endl;
+    std::cerr << "Retransmit: " << msg << std::endl;
     if ( cur_window_size != 0 ) {
       // i. keep track of retransmission
       timer.add_consecutive_retransmissions();
       // ii. double the RTO and restart the timer
       timer.set_rto( 2 * timer.get_rto() );
-      cout << "Doubled RTO with window size " << cur_window_size << endl;
+      cerr << "Doubled RTO with window size " << cur_window_size << endl;
     }
     // reset the time and start
     timer.clear_timer();

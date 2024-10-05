@@ -26,7 +26,7 @@ uint64_t Wrap32::unwrap( Wrap32 zero_point, uint64_t checkpoint ) const
     uint32_t gap = zero_point.raw_value_ - this->raw_value_;
     diff = 0xFFFFFFFF - gap + 1;
   }
-  // std::cout << "cp_low:" << cp_low << " ,diff:" << diff << ",checkpoint:" << checkpoint << std::endl;
+  // std::cerr << "cp_low:" << cp_low << " ,diff:" << diff << ",checkpoint:" << checkpoint << std::endl;
   if ( diff > cp_low ) {
     if ( diff - cp_low < 0x80000000 ) {
       return checkpoint - cp_low + diff;
