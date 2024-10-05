@@ -9,11 +9,9 @@ ByteStream::ByteStream( uint64_t capacity )
   : capacity_( capacity )
   , closed_( false )
   , error_( false )
-  , read_idx( 0 )
-  , write_idx( 0 )
   , bytes_pushed_( 0 )
   , bytes_popped_( 0 )
-  , buffer( string( capacity, '\0' ) )
+  , buffer( std::string() )
 {}
 
 bool Writer::is_closed() const
@@ -26,31 +24,17 @@ void Writer::push( string data )
 {
   // Your code here.
   (void)data;
-  if ( available_capacity() == 0 ) {
+  if ( closed_ ) {
     set_error();
     return;
   }
   auto size = data.size();
-  if ( read_idx > 0 && write_idx + size > capacity_ ) {
-    // copy, reset read idx to support peek
-    for ( auto i = read_idx; i < write_idx; ++i ) {
-      buffer[i - read_idx] = buffer[i];
-    }
-    write_idx = write_idx - read_idx;
-    read_idx = 0;
-  }
   if ( size > available_capacity() ) {
-    assert( read_idx == 0 );
-    set_error();
-    buffer.replace( write_idx, capacity_ - write_idx, data.substr( 0, capacity_ - write_idx ) );
-    bytes_pushed_ += capacity_ - write_idx;
-    write_idx = capacity_;
-    return;
+    data.resize( available_capacity() );
+    size = available_capacity();
   }
   bytes_pushed_ += size;
-  buffer.replace( write_idx, size, data );
-  write_idx += size;
-  assert( write_idx <= capacity_ );
+  buffer += data;
 }
 
 void Writer::close()
@@ -62,7 +46,7 @@ void Writer::close()
 uint64_t Writer::available_capacity() const
 {
   // Your code here.
-  return read_idx + capacity_ - write_idx;
+  return capacity_ - buffer.size();
 }
 
 uint64_t Writer::bytes_pushed() const
@@ -74,7 +58,8 @@ uint64_t Writer::bytes_pushed() const
 bool Reader::is_finished() const
 {
   // Your code here.
-  return read_idx == write_idx && closed_;
+  // return read_idx == write_idx && closed_;
+  return buffer.empty() && closed_;
 }
 
 uint64_t Reader::bytes_popped() const
@@ -86,19 +71,21 @@ uint64_t Reader::bytes_popped() const
 string_view Reader::peek() const
 {
   // Your code here.
-  return string_view( buffer ).substr( read_idx, write_idx - read_idx );
+  return string_view( buffer );
 }
 
 void Reader::pop( uint64_t len )
 {
   // Your code here.
   (void)len;
-  if ( write_idx - read_idx < len ) {
-    set_error();
+  auto size = buffer.size();
+  if ( len > size ) {
+    bytes_popped_ += size;
+    buffer.clear();
     return;
   }
   bytes_popped_ += len;
-  read_idx += len;
+  buffer = buffer.substr( len );
 }
 
 uint64_t Reader::bytes_buffered() const

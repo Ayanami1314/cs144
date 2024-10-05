@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-
 class Reader;
 class Writer;
 
@@ -26,8 +25,6 @@ protected:
   uint64_t capacity_;
   bool closed_;
   bool error_;
-  uint64_t read_idx;
-  uint64_t write_idx;
   uint64_t bytes_pushed_;
   uint64_t bytes_popped_;
   std::string buffer;
