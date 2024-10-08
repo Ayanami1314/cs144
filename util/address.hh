@@ -45,6 +45,8 @@ public:
   //! Equality comparison.
   bool operator==( const Address& other ) const;
   bool operator!=( const Address& other ) const { return not operator==( other ); }
+  // Other comparison
+  bool operator<( const Address& other ) const { return ipv4_numeric() < other.ipv4_numeric(); }
 
   //! \name Conversions
   //!@{

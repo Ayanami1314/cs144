@@ -1,10 +1,14 @@
 #pragma once
 
+#include <cstdint>
 #include <queue>
 
 #include "address.hh"
 #include "ethernet_frame.hh"
+#include "ethernet_header.hh"
 #include "ipv4_datagram.hh"
+#include <map>
+#include <optional>
 
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
@@ -81,4 +85,8 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
+  std::vector<std::pair<InternetDatagram, Address>> datagrams_to_send_ {};
+  std::map<Address, std::pair<EthernetAddress, uint64_t>> arp_table_;
+  std::map<Address, std::optional<uint64_t>> arp_time_table_;
+  uint64_t now_;
 };
