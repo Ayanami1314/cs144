@@ -68,6 +68,8 @@ public:
   const OutputPort& output() const { return *port_; }
   OutputPort& output() { return *port_; }
   std::queue<InternetDatagram>& datagrams_received() { return datagrams_received_; }
+  std::vector<std::pair<InternetDatagram, Address>>& datagrams_to_send() { return datagrams_to_send_; }
+  Address ip_address() const { return ip_address_; }
 
 private:
   // Human-readable name of the interface

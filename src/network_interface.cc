@@ -43,6 +43,7 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
   (void)next_hop;
 
   if ( next_hop != ip_address_ && !arp_table_.contains( next_hop ) ) {
+    cout << "Wait " << next_hop.to_string() << " for arp response" << endl;
     // ARP broadcast
     if ( !arp_time_table_.contains( next_hop ) ) {
       arp_time_table_[next_hop] = std::nullopt;
@@ -61,17 +62,21 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
                      .target_ip_address = next_hop.ipv4_numeric() };
     auto payload = serialize<ARPMessage>( msg );
     EthernetFrame frame { .header = header, .payload = payload };
+    datagrams_to_send_.push_back( { dgram, next_hop } ); // wait for arp table update and send.
     output().transmit( *this, frame );
 
-    datagrams_to_send_.push_back( { dgram, next_hop } ); // wait for arp table update and send.
     return;
   }
+
   EthernetAddress dst_ethernet_addr;
   if ( next_hop == ip_address_ ) {
     dst_ethernet_addr = ethernet_address_;
   } else {
     dst_ethernet_addr = arp_table_.at( next_hop ).first;
   }
+  // cout << "send datagram to " << next_hop.to_string() << " with ethernet address " << to_string(
+  // dst_ethernet_addr )
+  //      << endl;
   EthernetHeader header { .dst = dst_ethernet_addr, .src = ethernet_address_, .type = EthernetHeader::TYPE_IPv4 };
 
   auto payload = serialize<InternetDatagram>( dgram );
@@ -87,7 +92,7 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
   if ( frame.header.dst != ethernet_address_ && frame.header.dst != ETHERNET_BROADCAST ) {
     return;
   }
-
+  // cout << "recv frame" << endl;
   bool ok = false;
   if ( frame.header.type == EthernetHeader::TYPE_IPv4 ) {
     InternetDatagram received_ipv4;
@@ -103,11 +108,20 @@ void NetworkInterface::recv_frame( const EthernetFrame& frame )
     }
     Address sender_ip = Address::from_ipv4_numeric( received_arp.sender_ip_address );
     arp_table_.insert( std::make_pair( sender_ip, std::make_pair( received_arp.sender_ethernet_address, now_ ) ) );
+    arp_time_table_.insert( { sender_ip, now_ } );
 
-    for ( const auto& [d, ip] : datagrams_to_send_ ) {
+    // cout << "update " << ip_address_.ip() << "'s table from arp response: " << sender_ip.ip() << " -> "
+    //      << to_string( received_arp.sender_ethernet_address ) << endl;
+    // cout << "Waiting datagrams: " << datagrams_to_send_.size() << endl;
+    for ( auto it = datagrams_to_send_.begin(); it != datagrams_to_send_.end(); ) {
+      // cout << "check " << ip.to_string() << endl;
+      auto [d, ip] = *it;
       if ( sender_ip == ip ) {
-        std::cerr << "send " << ip.ipv4_numeric() << std::endl;
+        // std::cerr << "send " << ip.ipv4_numeric() << std::endl;
         send_datagram( d, ip );
+        it = datagrams_to_send_.erase( it );
+      } else {
+        it++;
       }
     }
     if ( received_arp.opcode == ARPMessage::OPCODE_REQUEST
@@ -134,6 +148,7 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
   // Your code here.
   (void)ms_since_last_tick;
   now_ += ms_since_last_tick;
+  cout << "tick " << ms_since_last_tick << endl;
   for ( auto it = arp_table_.begin(); it != arp_table_.end(); ) {
     if ( now_ - it->second.second >= 30000 ) {
       // expired

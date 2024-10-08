@@ -2,9 +2,14 @@
 
 #include <memory>
 #include <optional>
+#include <string>
+#include <utility>
 
+#include "address.hh"
 #include "exception.hh"
 #include "network_interface.hh"
+#include <set>
+#include <vector>
 
 // \brief A router that has multiple network interfaces and
 // performs longest-prefix-match routing between them.
@@ -34,5 +39,25 @@ public:
 
 private:
   // The router's collection of network interfaces
+  struct RuleKey
+  {
+    uint32_t rule {};
+    uint8_t len {};
+    bool operator<( const RuleKey& rhs ) const { return len > rhs.len || ( len == rhs.len && rule > rhs.rule ); }
+    bool operator==( const RuleKey& rhs ) const { return len == rhs.len && rule == rhs.rule; }
+    bool operator!=( const RuleKey& rhs ) const { return !operator==( rhs ); }
+    std::string to_string() const
+    {
+      return Address::from_ipv4_numeric( rule ).to_string() + "/" + std::to_string( len );
+    }
+  };
+  struct RuleValue
+  {
+    size_t interface_num {};
+    std::vector<std::optional<Address>> next_hop {};
+  };
+
+  bool match( uint32_t address, const RuleKey& r ) const;
   std::vector<std::shared_ptr<NetworkInterface>> _interfaces {};
+  std::map<RuleKey, RuleValue> _rules {};
 };
